@@ -1,0 +1,13 @@
+transformers
+datasets
+trl
+peft
+tqdm
+torch
+matplotlib
+openai
+accelerate
+scipy
+wandb
+flash_attn
+optimum
