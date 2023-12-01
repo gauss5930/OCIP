@@ -1,5 +1,6 @@
 from trl import SFTTrainer
 from transformers import TrainingArguments
+import huggingface_hub
 
 from utils import (
     create_datasets,
@@ -19,7 +20,7 @@ def args_parse():
 
     parser.add_argument("--neft_noise_alpha", type=int, help="NEFTune noise alpha")
 
-    parser.add_argument("--model_path", type=str, required=True, default="meta-llama/Llama-2-7b-hf")
+    parser.add_argument("--model_path", type=str, default="meta-llama/Llama-2-7b-hf")
     parser.add_argument("--dataset_path", type=str, default="HuggingFaceH4/no_robots")
     parser.add_argument("--seq_length", type=int, default=4096)
     parser.add_argument("--sample_size", type=int, default=None)
@@ -34,7 +35,7 @@ def args_parse():
     parser.add_argument("--eval_strategy", type=str, default="epoch")
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--micro_batch_size", type=int, default=8)
-    parser.add_argument("--gradient_checkpointing", type=bool, default=False)
+    parser.add_argument("--gradient_checkpointing", type=bool, default=True)
     parser.add_argument("--group_by_length", type=bool, default=False)
     parser.add_argument("--packing", type=bool, default=False)
 
@@ -58,9 +59,11 @@ def args_parse():
 if __name__ == "__main__":
     args = args_parse()
 
-    peft_config = get_peft_config(args)
+    huggingface_hub.login(args.hf_token)
+    
+    peft_config = get_peft_config(args, "sft")
 
-    model = get_train_model(args)
+    model = get_train_model(args, "sft")
 
     tokenizer = get_tokenizer(args)
     
@@ -77,6 +80,7 @@ if __name__ == "__main__":
     training_args = TrainingArguments(
         output_dir=args.output_dir,
         num_train_epochs=args.num_epochs,
+        max_steps=15,
         per_device_train_batch_size=args.micro_batch_size,
         per_device_eval_batch_size=args.micro_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
@@ -98,14 +102,18 @@ if __name__ == "__main__":
     train_dataset = train_dataset.map(process_datasets, fn_kwargs={"tokenizer": tokenizer, "task_type": "sft"})
     eval_dataset = eval_dataset.map(process_datasets, fn_kwargs={"tokenizer": tokenizer, "task_type": "sft"})
 
+    peft_config = get_peft_config(args, "sft")
+    
     trainer = SFTTrainer(
         model=model,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         packing=args.packing,
+        dataset_text_field="text",
         max_seq_length=args.seq_length,
         tokenizer=tokenizer,
         args=training_args,
+        peft_config=peft_config,
         neftune_noise_alpha=args.neft_noise_alpha if args.neft_noise_alpha else None
     )
 

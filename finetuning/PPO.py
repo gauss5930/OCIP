@@ -1,16 +1,10 @@
-from dataclasses import dataclass, field
-from typing import Optional
-
 import argparse
 import torch
 import os
-from accelerate import Accelerator
-from datasets import load_dataset
-from peft import LoraConfig
 from tqdm import tqdm
-from transformers import Adafactor, AutoTokenizer, HfArgumentParser, pipeline
+from transformers import Adafactor, pipeline
 
-from trl import AutoModelForCausalLMWithValueHead, PPOConfig, PPOTrainer, set_seed
+from trl import PPOConfig, PPOTrainer, set_seed
 from trl.core import LengthSampler
 
 from utils import (
