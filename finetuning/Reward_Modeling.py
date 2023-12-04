@@ -71,7 +71,7 @@ if __name__ == "__main__":
         remove_unused_columns=False,
         label_names=[],
         bf16=args.bf16,
-        logging_steps=10,
+        logging_steps=1,
         lr_scheduler_type=args.lr_scheduler_type,
         report_to="wandb" if use_wandb else None,
         run_name=args.wandb_run_name if use_wandb else None,
@@ -223,5 +223,3 @@ if __name__ == "__main__":
         trainer.add_callback(EvaluateFirstStepCallback())
 
     trainer.train()
-
-    model.save_pretrained(args.output_dir + "RM_last_checkpoint/")
