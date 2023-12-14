@@ -80,7 +80,6 @@ if __name__ == "__main__":
     training_args = TrainingArguments(
         output_dir=args.output_dir,
         num_train_epochs=args.num_epochs,
-        max_steps=15,
         per_device_train_batch_size=args.micro_batch_size,
         per_device_eval_batch_size=args.micro_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,

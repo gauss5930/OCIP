@@ -31,6 +31,15 @@ def process_datasets(
         )
 
     elif task_type == "rm":
+        example["prompt"] = example["prompt"].split(":")[-1]
+        example["chosen"] = [
+            {"role": "user", "content": example["prompt"]},
+            {"role": "assistant", "content": example["chosen"].split(":")[-1]}
+        ]
+        example["rejected"] = [
+            {"role": "user", "content": example["prompt"]},
+            {"role": "assistant", "content": example["rejected"].split(":")[-1]}
+        ]
         if all(k in example.keys() for k in ("chosen", "rejected")):
             chosen_messages = example["chosen"]
             rejected_messages = example["rejected"]

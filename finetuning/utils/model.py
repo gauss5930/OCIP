@@ -2,10 +2,17 @@ import os
 from typing import Dict
 from typing import List, Literal, Optional
 
+from dataclasses import dataclass, field
+from typing import Optional
+
+import torch
+from peft import PeftConfig, PeftModel
+from transformers import AutoModelForCausalLM, AutoModelForSequenceClassification, AutoTokenizer
+
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModelForSequenceClassification
 
-from peft import LoraConfig, AutoPeftModelForCausalLM, AutoPeftModelForSequenceClassification, get_peft_model
+from peft import LoraConfig, AutoPeftModelForCausalLM, AutoPeftModelForSequenceClassification, get_peft_model, TaskType
 from trl import AutoModelForCausalLMWithValueHead
 
 def get_train_model(args, task_type: Literal["sft", "rm", "ppo", "dpo"]):
@@ -46,13 +53,17 @@ def get_merged_model(args, task_type: Literal["sft", "rm", "dpo"]):
     if task_type in["sft", "dpo"]:
         model = AutoPeftModelForCausalLM.from_pretrained(args.model_path, device_map="auto", torch_dtype=torch.bfloat16)
     elif task_type == "rm":
-        model = AutoPeftModelForSequenceClassification.from_pretrained(args.model_path, device_map="auto", torch_dtype=torch.bfloat16)
+        model = AutoModelForSequenceClassification.from_pretrained(
+            args.base_model, num_labels=1, torch_dtype=torch.bfloat16
+        )
+        model = PeftModel.from_pretrained(model, args.model_path)
+        model.eval()
     else:
         raise ValueError(f"{task_type} does not support.")
     
     model = model.merge_and_unload()
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model_path)
+    tokenizer = AutoTokenizer.from_pretrained(args.base_model)
 
     if args.hf_hub_path:
         model.push_to_hub(args.hf_hub_path)
@@ -82,7 +93,7 @@ def get_peft_config(args, task_type: Literal["sft", "rm", "ppo", "dpo"]):
             lora_alpha=args.lora_alpha,
             lora_dropout=args.lora_dropout,
             target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "down_proj", "up_proj"],
-            task_type="TaskType.SEQ_CLS",
+            task_type=TaskType.SEQ_CLS,
             inference_mode=False
         )
 

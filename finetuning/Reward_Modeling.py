@@ -20,22 +20,23 @@ def args_parse():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--model_path", type=str)
-    parser.add_argument("--data_path", type=str, default="yitingxie/rlhf-reward-datasets")
+    parser.add_argument("--dataset_path", type=str, default="yitingxie/rlhf-reward-datasets")
     parser.add_argument("--output_dir", type=str, default="finetuning/result/RM/")
 
     parser.add_argument("--lora_r", type=int, default=8)
     parser.add_argument("--lora_alpha", type=int, default=16)
     parser.add_argument("--lora_dropout", type=float, default=0.05)
 
-    parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--micro_batch_size", type=int, default=8)
+    parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--micro_batch_size", type=int, default=4)
     parser.add_argument("--learning_rate", type=float, default=2e-5)
     parser.add_argument("--lr_scheduler", type=str, default="linear")
     parser.add_argument("--weight_decay", type=float, default=0.001)
     parser.add_argument("--bf16", type=bool, default=True)
     parser.add_argument("--num_epochs", type=int, default=1)
-    parser.add_argument("--gradient_checkpointing", type=bool, default=True)
+    parser.add_argument("--gradient_checkpointing", type=bool, default=False)
     parser.add_argument("--max_length", type=int, default=4096)
+    parser.add_argument("--eval_first_step", type=bool, default=False)
 
     parser.add_argument("--wandb_project", type=str)
     parser.add_argument("--wandb_run_name", type=str)
@@ -46,7 +47,7 @@ def args_parse():
 if __name__ == "__main__":
     args = args_parse()
 
-    gradient_accumulation_steps = args.batch_size // args.per_device_train_batch_size
+    gradient_accumulation_steps = args.batch_size // args.micro_batch_size
 
     # Check if parameter passed or if set within environ
     use_wandb = len(args.wandb_project) > 0 or (
@@ -60,19 +61,18 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         learning_rate=args.learning_rate,
         per_device_train_batch_size=args.micro_batch_size,
-        per_device_eval_batch_size=args.microl_batch_size,
-        num_train_epochs=args.num_train_epochs,
+        per_device_eval_batch_size=args.micro_batch_size,
+        num_train_epochs=args.num_epochs,
         weight_decay=args.weight_decay,
         evaluation_strategy="epoch",
-        save_strategy="epoch",
+        save_strategy="no",
         gradient_accumulation_steps=gradient_accumulation_steps,
         gradient_checkpointing=args.gradient_checkpointing,
-        local_rank=args.local_rank,
         remove_unused_columns=False,
         label_names=[],
         bf16=args.bf16,
         logging_steps=1,
-        lr_scheduler_type=args.lr_scheduler_type,
+        lr_scheduler_type=args.lr_scheduler,
         report_to="wandb" if use_wandb else None,
         run_name=args.wandb_run_name if use_wandb else None,
     )
@@ -80,6 +80,7 @@ if __name__ == "__main__":
     tokenizer = get_tokenizer(args)
 
     model = get_train_model(args, "rm")
+    model.config.pad_token_id = model.config.eos_token_id
 
     train_dataset, eval_dataset = create_datasets(args, "rm")
     train_dataset = train_dataset.map(
@@ -119,7 +120,7 @@ if __name__ == "__main__":
         remove_columns=original_columns,
     )
     train_dataset = train_dataset.filter(
-        lambda x: len(x["input_ids_chosen"]) <= args.max_length and len(x["input_ids_rjected"]) <= args.max_length
+        lambda x: len(x["input_ids_chosen"]) <= args.max_length and len(x["input_ids_rejected"]) <= args.max_length
     )
 
     eval_dataset = eval_dataset.map(
@@ -152,8 +153,8 @@ if __name__ == "__main__":
                 )
                 features_rejected.append(
                     {
-                        "input_ids": feature["input_ids_k"],
-                        "attention_mask": feature["attention_mask_k"],
+                        "input_ids": feature["input_ids_rejected"],
+                        "attention_mask": feature["attention_mask_rejected"],
                     }
                 )
             batch_chosen = self.tokenizer.pad(
@@ -223,3 +224,5 @@ if __name__ == "__main__":
         trainer.add_callback(EvaluateFirstStepCallback())
 
     trainer.train()
+
+    model.save_pretrained(args.output_dir)

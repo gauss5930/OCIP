@@ -20,7 +20,7 @@ def args_parse():
     parser.add_argument("--beta", type=float, default=0.1)
 
     parser.add_argument("--model_path", type=str, default="")
-    parser.add_argument("--data_path", type=str, default="HuggingFaceH4/ultrafeedback_binarized")
+    parser.add_argument("--dataset_path", type=str, default="HuggingFaceH4/ultrafeedback_binarized")
     parser.add_argument("--num_proc", type=int, required=True)
     parser.add_argument("--output_dir", type=str, default="finetuning/result/DPO/")
 

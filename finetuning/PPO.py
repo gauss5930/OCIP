@@ -22,7 +22,7 @@ def args_parse():
 
     parser.add_argument("--model_path", type=str, default="")
     parser.add_argument("--reward_model_path", type=str, default="")
-    parser.add_argument("--data_path", type=str, default="HuggingFaceH4/ultrafeedback_binarized")
+    parser.add_argument("--dataset_path", type=str, default="HuggingFaceH4/ultrafeedback_binarized")
 
     parser.add_argument("--learning_rate", type=float, default=2e-5)
     parser.add_argument("--max_length", type=int, default=512)

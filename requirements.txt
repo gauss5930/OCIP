@@ -11,3 +11,5 @@ scipy
 wandb
 flash_attn
 optimum
+evaluate
+scikit-learn
