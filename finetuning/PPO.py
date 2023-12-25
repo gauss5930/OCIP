@@ -22,7 +22,7 @@ def args_parse():
 
     parser.add_argument("--model_path", type=str, default="")
     parser.add_argument("--reward_model_path", type=str, default="")
-    parser.add_argument("--dataset_path", type=str, default="HuggingFaceH4/ultrafeedback_binarized")
+    parser.add_argument("--dataset_path", type=str, default="allenai/ultrafeedback_binarized_cleaned")
 
     parser.add_argument("--learning_rate", type=float, default=2e-5)
     parser.add_argument("--max_length", type=int, default=512)
@@ -36,12 +36,12 @@ def args_parse():
     parser.add_argument("--target_kl", type=float, default=0.1)
     parser.add_argument("--reward_baseline", type=float, default=0.0)
     parser.add_argument("--batched_gen", type=bool, default=False)
-    parser.add_argument("--save_freq", type=int, default=None)
+    parser.add_argument("--save_freq", type=int, default=1)
     parser.add_argument("--output_dir", type=str, default="finetuning/result/PPO/")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--init_kl_coef", type=float, default=0.2)
     parser.add_argument("--adap_kl_ctrl", type=bool, default=True)
-    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--gradient_checkpointing", type=bool, default=False)
 
     parser.add_argument("--log_with", type=str, default="wandb")
     parser.add_argument("--wandb_project", type=str)
@@ -91,12 +91,14 @@ if __name__ == "__main__":
         process_datasets, 
         fn_kwargs={"tokenizer": tokenizer, "task_type": "ppo"},
         batched=True,
+        num_proc=1,
         remove_columns=original_columns
     )
     eval_dataset = eval_dataset.map(
         process_datasets, 
         fn_kwargs={"tokenizer": tokenizer, "task_type": "ppo"},
         batched=True,
+        num_proc=1,
         remove_columns=original_columns
     )
 

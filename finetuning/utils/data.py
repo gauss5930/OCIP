@@ -58,10 +58,10 @@ def process_datasets(
         for prompt in example["messages"]:
             if prompt[0]["role"] != "system":
                 prompt.insert(0, {"role": "system", "content": ""})
-            query = tokenizer.apply_chat_template(prompt[0:2], add_generation_prompt=True)
+            query = tokenizer.apply_chat_template(prompt[:-1], tokenize=False, add_generation_prompt=True)
             tokenized_question = tokenizer(query, truncation=True)
             new_examples["query"].append(query)
-            new_examples["input_ids"].append(tokenized_question)
+            new_examples["input_ids"].append(tokenized_question["input_ids"])
 
         return new_examples
 
