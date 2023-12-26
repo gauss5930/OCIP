@@ -26,8 +26,8 @@ def args_parse():
 
     parser.add_argument("--learning_rate", type=float, default=2e-5)
     parser.add_argument("--max_length", type=int, default=512)
-    parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--micro_batch_size", type=int, default=8)
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--micro_batch_size", type=int, default=1)
     parser.add_argument("--num_epochs", type=int, default=3)
     parser.add_argument("--ada_factor", type=bool, default=False)
     parser.add_argument("--early_stopping", type=bool, default=False)
@@ -43,9 +43,12 @@ def args_parse():
     parser.add_argument("--adap_kl_ctrl", type=bool, default=True)
     parser.add_argument("--gradient_checkpointing", type=bool, default=False)
 
+    parser.add_argument("--lora_r", type=int, default=8)
+    parser.add_argument("--lora_alpha", type=int, default=16)
+    parser.add_argument("--lora_dropout", type=float, default=0.05)
+
     parser.add_argument("--log_with", type=str, default="wandb")
     parser.add_argument("--wandb_project", type=str)
-    parser.add_argument("--wandb_run_name", type=str)
 
     return parser.parse_args()
 
@@ -64,7 +67,7 @@ if __name__ == "__main__":
     # Only overwrite environ if wandb param passed
     if len(args.wandb_project) > 0:
         os.environ["WANDB_PROJECT"] = args.wandb_project
-
+    
     reward_model_name = args.reward_model_path
 
     config = PPOConfig(
@@ -72,6 +75,7 @@ if __name__ == "__main__":
         model_name=args.model_path.split("/")[-1],
         learning_rate=args.learning_rate,
         log_with=args.log_with,
+        tracker_project_name=args.wandb_project,
         batch_size=args.batch_size,
         mini_batch_size=args.micro_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
@@ -94,6 +98,8 @@ if __name__ == "__main__":
         num_proc=1,
         remove_columns=original_columns
     )
+    train_dataset.set_format(type="torch")
+    
     eval_dataset = eval_dataset.map(
         process_datasets, 
         fn_kwargs={"tokenizer": tokenizer, "task_type": "ppo"},
@@ -101,6 +107,7 @@ if __name__ == "__main__":
         num_proc=1,
         remove_columns=original_columns
     )
+    eval_dataset.set_format(type="torch")
 
     sent_kwargs = {
         "return_all_scores": True,
@@ -115,6 +122,7 @@ if __name__ == "__main__":
     set_seed(args.seed)
 
     model = get_train_model(args, task_type="ppo")
+    model.config.pad_token_id = model.config.eos_token_id
 
     optimizer = None
     if args.adafactor:
